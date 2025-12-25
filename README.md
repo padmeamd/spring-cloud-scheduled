@@ -15,7 +15,7 @@ void doSmthEveryDay(){
 What will we use in order to implement this library:
 - spring integration for zookeeper: `https://github.com/spring-projects/spring-integration`
 - zookeeper starter: `https://github.com/spring-cloud/spring-cloud-zookeeper`
-- spring boot starter: `https://github.com/spring-projects/spring-boot`
+- spring framework: `https://github.com/spring-projects/spring-framework`
 - plugin for build: 'java-library'
 - gradle 9.2 or higher
 
