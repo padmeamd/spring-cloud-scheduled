@@ -31,6 +31,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import com.padmeamd.spring.cloud.scheduling.service.ZkLeaderElectionService;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.jspecify.annotations.Nullable;
@@ -157,12 +158,14 @@ public class CloudScheduledAnnotationBeanPostProcessor
 
 	private final Set<Object> manualCancellationOnContextClose = Collections.newSetFromMap(new IdentityHashMap<>(16));
 
+    private final ZkLeaderElectionService leaderElectionService;
 
 	/**
 	 * Create a default {@code ScheduledAnnotationBeanPostProcessor}.
 	 */
-	public CloudScheduledAnnotationBeanPostProcessor() {
+	public CloudScheduledAnnotationBeanPostProcessor(ZkLeaderElectionService leaderElectionService) {
 		this.registrar = new ScheduledTaskRegistrar();
+        this.leaderElectionService = leaderElectionService;
 	}
 
 	/**
@@ -172,9 +175,10 @@ public class CloudScheduledAnnotationBeanPostProcessor
 	 * tasks on
 	 * @since 5.1
 	 */
-	public CloudScheduledAnnotationBeanPostProcessor(ScheduledTaskRegistrar registrar) {
+	public CloudScheduledAnnotationBeanPostProcessor(ScheduledTaskRegistrar registrar, ZkLeaderElectionService leaderElectionService) {
 		Assert.notNull(registrar, "ScheduledTaskRegistrar must not be null");
 		this.registrar = registrar;
+        this.leaderElectionService = leaderElectionService;
 	}
 
 
@@ -400,7 +404,13 @@ public class CloudScheduledAnnotationBeanPostProcessor
 	 * @param bean the target bean instance
 	 */
 	private void processScheduledTask(CloudScheduled scheduled, Runnable runnable, Method method, Object bean) {
-		try {
+        Runnable gated = () -> {
+                if (!leaderElectionService.isLeader()) {
+                    return;
+                }
+                runnable.run();
+            };
+        try {
 			boolean processedSchedule = false;
 			String errorMessage = "Exactly one of the 'cron', 'fixedDelay' or 'fixedRate' attributes is required";
 
@@ -444,7 +454,7 @@ public class CloudScheduledAnnotationBeanPostProcessor
 						else {
 							trigger = new CronTrigger(cron);
 						}
-						tasks.add(this.registrar.scheduleCronTask(new CronTask(runnable, trigger)));
+						tasks.add(this.registrar.scheduleCronTask(new CronTask(gated, trigger)));
 					}
 				}
 			}
@@ -457,7 +467,7 @@ public class CloudScheduledAnnotationBeanPostProcessor
 			if (!fixedDelay.isNegative()) {
 				Assert.isTrue(!processedSchedule, errorMessage);
 				processedSchedule = true;
-				tasks.add(this.registrar.scheduleFixedDelayTask(new FixedDelayTask(runnable, fixedDelay, delayToUse)));
+				tasks.add(this.registrar.scheduleFixedDelayTask(new FixedDelayTask(gated, fixedDelay, delayToUse)));
 			}
 			String fixedDelayString = scheduled.fixedDelayString();
 			if (StringUtils.hasText(fixedDelayString)) {
@@ -474,7 +484,7 @@ public class CloudScheduledAnnotationBeanPostProcessor
 						throw new IllegalArgumentException(
 								"Invalid fixedDelayString value \"" + fixedDelayString + "\"; " + ex);
 					}
-					tasks.add(this.registrar.scheduleFixedDelayTask(new FixedDelayTask(runnable, fixedDelay, delayToUse)));
+					tasks.add(this.registrar.scheduleFixedDelayTask(new FixedDelayTask(gated, fixedDelay, delayToUse)));
 				}
 			}
 
@@ -483,7 +493,7 @@ public class CloudScheduledAnnotationBeanPostProcessor
 			if (!fixedRate.isNegative()) {
 				Assert.isTrue(!processedSchedule, errorMessage);
 				processedSchedule = true;
-				tasks.add(this.registrar.scheduleFixedRateTask(new FixedRateTask(runnable, fixedRate, delayToUse)));
+				tasks.add(this.registrar.scheduleFixedRateTask(new FixedRateTask(gated, fixedRate, delayToUse)));
 			}
 			String fixedRateString = scheduled.fixedRateString();
 			if (StringUtils.hasText(fixedRateString)) {
@@ -500,7 +510,7 @@ public class CloudScheduledAnnotationBeanPostProcessor
 						throw new IllegalArgumentException(
 								"Invalid fixedRateString value \"" + fixedRateString + "\"; " + ex);
 					}
-					tasks.add(this.registrar.scheduleFixedRateTask(new FixedRateTask(runnable, fixedRate, delayToUse)));
+					tasks.add(this.registrar.scheduleFixedRateTask(new FixedRateTask(gated, fixedRate, delayToUse)));
 				}
 			}
 
@@ -508,7 +518,7 @@ public class CloudScheduledAnnotationBeanPostProcessor
 				if (initialDelay.isNegative()) {
 					throw new IllegalArgumentException("One-time task only supported with specified initial delay");
 				}
-				tasks.add(this.registrar.scheduleOneTimeTask(new OneTimeTask(runnable, delayToUse)));
+				tasks.add(this.registrar.scheduleOneTimeTask(new OneTimeTask(gated, delayToUse)));
 			}
 
 			// Finally register the scheduled tasks

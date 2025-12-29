@@ -16,12 +16,14 @@
 
 package com.padmeamd.spring.cloud.scheduling.configuration;
 
+import com.padmeamd.spring.cloud.scheduling.service.ZkLeaderElectionService;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Role;
 
 import com.padmeamd.spring.cloud.scheduling.CloudScheduledAnnotationBeanPostProcessor;
+import org.springframework.core.env.Environment;
 
 /**
  * {@code @Configuration} class that registers a {@link CloudScheduledAnnotationBeanPostProcessor}
@@ -40,10 +42,23 @@ import com.padmeamd.spring.cloud.scheduling.CloudScheduledAnnotationBeanPostProc
 @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
 public class CloudSchedulingConfiguration {
 
-	@Bean
-	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
-	public CloudScheduledAnnotationBeanPostProcessor scheduledAnnotationProcessor() {
-		return new CloudScheduledAnnotationBeanPostProcessor();
-	}
+    private final String latchPath = "cloud.scheduling.zookeeper.latchPath";
+    private final String applicationName = "spring.application.name";
 
+    @Bean(destroyMethod = "shutdown")
+    public ZkLeaderElectionService leaderElectionService(Environment env) throws Exception {
+        //check zookeeper alternative (zookeeper starter)
+        String connect = env.getProperty("cloud.scheduling.zookeeper.connectString");
+        String path = env.getProperty(latchPath, "/cloud-scheduled/leader");
+        String instanceId = env.getProperty(applicationName);
+        return new ZkLeaderElectionService(connect, path, instanceId);
+    }
+
+    @Bean
+    @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
+    public CloudScheduledAnnotationBeanPostProcessor scheduledAnnotationProcessor(
+            ZkLeaderElectionService leaderElectionService
+    ) {
+        return new CloudScheduledAnnotationBeanPostProcessor(leaderElectionService);
+    }
 }
