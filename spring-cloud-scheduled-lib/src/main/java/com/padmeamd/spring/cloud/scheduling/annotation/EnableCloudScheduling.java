@@ -28,7 +28,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.Trigger;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 
-import com.padmeamd.spring.cloud.scheduling.configuration.CloudSchedulingConfiguration;
+import com.padmeamd.spring.cloud.scheduling.configuration.CloudScheduledConfiguration;
 
 /**
  * Enables Spring's scheduled task execution capability, similar to
@@ -225,7 +225,7 @@ import com.padmeamd.spring.cloud.scheduling.configuration.CloudSchedulingConfigu
  * @author Juergen Hoeller
  * @since 3.1
  * @see CloudScheduled
- * @see CloudSchedulingConfiguration
+ * @see CloudScheduledConfiguration
  * @see SchedulingConfigurer
  * @see ScheduledTaskRegistrar
  * @see Trigger
@@ -233,7 +233,7 @@ import com.padmeamd.spring.cloud.scheduling.configuration.CloudSchedulingConfigu
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-@Import(CloudSchedulingConfiguration.class)
+@Import(CloudScheduledConfiguration.class)
 @Documented
 public @interface EnableCloudScheduling {
 
