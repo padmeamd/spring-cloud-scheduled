@@ -65,6 +65,7 @@ import org.springframework.format.annotation.DurationFormat;
 import org.springframework.format.datetime.standard.DurationFormatterUtils;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.Trigger;
+import org.springframework.scheduling.annotation.AsyncAnnotationBeanPostProcessor;
 import org.springframework.scheduling.annotation.SchedulingConfigurer;
 import org.springframework.scheduling.config.CronTask;
 import org.springframework.scheduling.config.FixedDelayTask;
@@ -82,6 +83,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.util.StringValueResolver;
 
 import com.padmeamd.spring.cloud.scheduling.annotation.CloudScheduled;
+import com.padmeamd.spring.cloud.scheduling.annotation.EnableCloudScheduling;
 
 /**
  * Bean post-processor that registers methods annotated with
@@ -184,7 +186,7 @@ public class CloudScheduledAnnotationBeanPostProcessor
 
 	@Override
 	public int getOrder() {
-		return LOWEST_PRECEDENCE;
+		return Ordered.HIGHEST_PRECEDENCE;
 	}
 
 	/**
@@ -293,7 +295,7 @@ public class CloudScheduledAnnotationBeanPostProcessor
 				AnnotationUtils.isCandidateClass(targetClass, List.of(CloudScheduled.class))) {
 			Map<Method, Set<CloudScheduled>> annotatedMethods = MethodIntrospector.selectMethods(targetClass,
 					(MethodIntrospector.MetadataLookup<Set<CloudScheduled>>) method -> {
-						Set<CloudScheduled> scheduledAnnotations = AnnotatedElementUtils.getMergedRepeatableAnnotations(
+						Set<CloudScheduled> scheduledAnnotations = AnnotatedElementUtils.getAllMergedAnnotations(
 								method, CloudScheduled.class);
 						return (!scheduledAnnotations.isEmpty() ? scheduledAnnotations : null);
 					});
