@@ -1,0 +1,11 @@
+spring:
+    application:
+        name: spring-cloud-scheduled
+    cloud:
+        zookeeper:
+            connect-string: localhost:2181
+        scheduling:
+            zookeeper:
+                latchPath: /cloud-scheduled/leader
+server:
+    port: ${random.int(8080,9090)}
